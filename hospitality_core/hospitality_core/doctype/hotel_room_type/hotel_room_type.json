@@ -1,73 +1,96 @@
 {
- "actions": [],
- "allow_rename": 1,
- "autoname": "field:room_type_name",
- "creation": "2025-01-28 10:00:00.000000",
- "doctype": "DocType",
- "engine": "InnoDB",
- "field_order": [
-  "room_type_name",
-  "default_rate",
-  "max_adults",
-  "max_children",
-  "description"
- ],
- "fields": [
-  {
-   "fieldname": "room_type_name",
-   "fieldtype": "Data",
-   "label": "Room Type Name",
-   "reqd": 1,
-   "unique": 1
-  },
-  {
-   "fieldname": "default_rate",
-   "fieldtype": "Currency",
-   "label": "Default Rate",
-   "reqd": 1
-  },
-  {
-   "default": "2",
-   "fieldname": "max_adults",
-   "fieldtype": "Int",
-   "label": "Max Adults",
-   "reqd": 1
-  },
-  {
-   "default": "1",
-   "fieldname": "max_children",
-   "fieldtype": "Int",
-   "label": "Max Children",
-   "reqd": 1
-  },
-  {
-   "fieldname": "description",
-   "fieldtype": "Small Text",
-   "label": "Description"
-  }
- ],
- "index_web_pages_for_search": 1,
- "links": [],
- "modified": "2025-01-28 10:00:00.000000",
- "modified_by": "Administrator",
- "module": "Hospitality Core",
- "name": "Hotel Room Type",
- "owner": "Administrator",
- "permissions": [
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "System Manager",
-   "share": 1,
-   "write": 1
-  }
- ],
- "sort_field": "modified",
- "sort_order": "DESC",
- "track_changes": 1
+    "actions": [],
+    "allow_rename": 1,
+    "autoname": "field:room_type_name",
+    "creation": "2025-01-28 10:00:00.000000",
+    "doctype": "DocType",
+    "engine": "InnoDB",
+    "field_order": [
+        "room_type_name",
+        "default_rate",
+        "max_adults",
+        "max_children",
+        "description"
+    ],
+    "fields": [
+        {
+            "fieldname": "room_type_name",
+            "fieldtype": "Data",
+            "label": "Room Type Name",
+            "reqd": 1,
+            "unique": 1
+        },
+        {
+            "fieldname": "default_rate",
+            "fieldtype": "Currency",
+            "label": "Default Rate",
+            "reqd": 1
+        },
+        {
+            "default": "2",
+            "fieldname": "max_adults",
+            "fieldtype": "Int",
+            "label": "Max Adults",
+            "reqd": 1
+        },
+        {
+            "default": "1",
+            "fieldname": "max_children",
+            "fieldtype": "Int",
+            "label": "Max Children",
+            "reqd": 1
+        },
+        {
+            "fieldname": "description",
+            "fieldtype": "Small Text",
+            "label": "Description"
+        }
+    ],
+    "index_web_pages_for_search": 1,
+    "links": [],
+    "modified": "2025-01-28 10:00:00.000000",
+    "modified_by": "Administrator",
+    "module": "Hospitality Core",
+    "name": "Hotel Room Type",
+    "owner": "Administrator",
+    "permissions": [
+        {
+            "create": 1,
+            "delete": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "System Manager",
+            "share": 1,
+            "write": 1
+        },
+        {
+            "create": 1,
+            "delete": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "Hospitality Manager",
+            "share": 1,
+            "write": 1
+        },
+        {
+            "create": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "Hospitality User",
+            "share": 1,
+            "write": 1
+        }
+    ],
+    "sort_field": "modified",
+    "sort_order": "DESC",
+    "track_changes": 1
 }
