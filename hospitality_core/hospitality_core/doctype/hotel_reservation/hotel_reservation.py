@@ -203,4 +203,88 @@ class HotelReservation(Document):
                             "parenttype": "Guest Folio",
                             "parentfield": "transactions",
                             "posting_date": nowdate(),
-                            "item": transfer_ite_
+                            "item": transfer_item,
+                            "description": f"Transfer to {self.company}",
+                            "qty": 1,
+                            "amount": -flt(company_liability),
+                            "bill_to": "Company",
+                        }
+                    ).insert(ignore_permissions=True)
+
+            # FINAL BALANCE
+            from hospitality_core.hospitality_core.api.folio import (
+                sync_folio_balance,
+                record_guest_balance,
+            )
+
+            sync_folio_balance(folio_doc)
+
+            balance = frappe.db.get_value(
+                "Guest Folio",
+                self.folio,
+                "outstanding_balance",
+            )
+
+            if not self.is_company_guest and balance > 0.01:
+                frappe.throw(
+                    _("Outstanding balance remains: {0}").format(balance)
+                )
+
+            # CLOSE FOLIO (SAFE)
+            folio_doc.reload()
+            folio_doc.status = "Closed"
+            folio_doc.close_date = nowdate()
+            folio_doc.save()
+
+            record_guest_balance(folio_doc)
+
+        # UPDATE RESERVATION
+        self.db_set("status", "Checked Out")
+
+        frappe.db.set_value("Hotel Room", self.room, "status", "Dirty")
+
+        self.save()
+
+        return "Checked Out"
+
+    def process_cancel(self):
+
+        if self.status != "Reserved":
+            frappe.throw(_("Only Reserved bookings can be Cancelled."))
+
+        self.db_set("status", "Cancelled")
+
+        if self.folio:
+            status = frappe.db.get_value(
+                "Guest Folio",
+                self.folio,
+                "status",
+            )
+
+            if status not in ["Closed", "Cancelled"]:
+                frappe.db.set_value(
+                    "Guest Folio",
+                    self.folio,
+                    "status",
+                    "Cancelled",
+                )
+
+        return "Cancelled"
+
+
+@frappe.whitelist()
+def check_in_guest(name):
+    doc = frappe.get_doc("Hotel Reservation", name)
+    return doc.process_check_in()
+
+
+@frappe.whitelist()
+def check_out_guest(name):
+    doc = frappe.get_doc("Hotel Reservation", name)
+    return doc.process_check_out()
+
+
+@frappe.whitelist()
+def cancel_reservation(name):
+    doc = frappe.get_doc("Hotel Reservation", name)
+    return doc.process_cancel()
