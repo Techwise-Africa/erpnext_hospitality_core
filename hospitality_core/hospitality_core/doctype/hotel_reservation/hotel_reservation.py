@@ -271,6 +271,7 @@ class HotelReservation(Document):
                     frappe.msgprint(_("Company Guest Checkout: Outstanding balance of {0}. Liability remains on Company Master Folio.").format(balance))
             
             # Close Folio
+			folio_doc.reload()  # VERY IMPORTANT
             folio_doc.status = "Closed"
             folio_doc.close_date = nowdate()
             
