@@ -1,21 +1,30 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import getdate, nowdate, add_days, flt
-from hospitality_core.hospitality_core.api.reservation import check_availability, create_folio
-# Imports for immediate billing logic
-from hospitality_core.hospitality_core.api.night_audit import post_room_charge, get_rate, already_charged_today
+from frappe.utils import getdate, nowdate, flt
+
+from hospitality_core.hospitality_core.api.reservation import (
+    check_availability,
+    create_folio,
+)
+
+from hospitality_core.hospitality_core.api.night_audit import (
+    post_room_charge,
+    get_rate,
+    already_charged_today,
+)
+
 
 class HotelReservation(Document):
+
     def validate(self):
         self.validate_dates()
-        
+
         # Only validate availability if status is Reserved or Checked In
         if self.status in ["Reserved", "Checked In"]:
             self.validate_room_availability()
-        
-        # Requirement: "billing to Company should be set... Folio is opened to the Company"
-        # New Requirement: If Is Company Guest is checked, Company is mandatory
+
+        # Company guest validation
         if self.is_company_guest and not self.company:
             frappe.throw(_("Company is mandatory when 'Is Company Guest' is checked."))
 
@@ -28,139 +37,157 @@ class HotelReservation(Document):
 
     def validate_room_availability(self):
         check_availability(
-            room=self.room, 
-            arrival_date=self.arrival_date, 
-            departure_date=self.departure_date, 
-            ignore_reservation=self.name
+            room=self.room,
+            arrival_date=self.arrival_date,
+            departure_date=self.departure_date,
+            ignore_reservation=self.name,
         )
 
     def after_insert(self):
-        # Requirement: "And a Folio is also opened for the guest"
+        # Create folio for guest
         create_folio(self)
 
     def ensure_company_folio(self):
-        """
-        Ensures an OPEN Master Folio exists for the Company.
-        Company Folios are indefinite and manually closed.
-        """
+        """Ensures an OPEN Master Folio exists for the Company."""
+
         if not self.company:
             return
 
-        # Check for existing Open Master Folio for this Company
-        exists = frappe.db.exists("Guest Folio", {
-            "company": self.company,
-            "status": "Open",
-            "is_company_master": 1
-        })
+        exists = frappe.db.exists(
+            "Guest Folio",
+            {
+                "company": self.company,
+                "status": "Open",
+                "is_company_master": 1,
+            },
+        )
 
         if not exists:
-            # Create Master Company Folio
             guest_name = self.get_corporate_guest_name()
-            
+
             folio = frappe.new_doc("Guest Folio")
-            folio.is_company_master = 1 # Flag as Company Folio
+            folio.is_company_master = 1
             folio.guest = guest_name
             folio.company = self.company
             folio.status = "Open"
             folio.open_date = nowdate()
-            # No specific reservation/room link for Master Folio
             folio.insert(ignore_permissions=True)
-            frappe.msgprint(_("Created new Master Folio for Company: {0}").format(self.company))
+
+            frappe.msgprint(
+                _("Created new Master Folio for Company: {0}").format(self.company)
+            )
 
     def get_corporate_guest_name(self):
-        """
-        Gets or creates a Representative Guest record for the Company to attach the Master Folio to.
-        """
-        g_name = frappe.db.get_value("Guest", {"customer": self.company}, "name")
+        """Gets or creates representative Guest record."""
+
+        g_name = frappe.db.get_value(
+            "Guest", {"customer": self.company}, "name"
+        )
+
         if not g_name:
-            # Create a placeholder guest for the company
             cust = frappe.get_doc("Customer", self.company)
+
             g = frappe.new_doc("Guest")
-            g.full_name = cust.customer_name + " (Master Rep)"
+            g.full_name = f"{cust.customer_name} (Master Rep)"
             g.customer = self.company
             g.guest_type = "Corporate"
             g.insert(ignore_permissions=True)
+
             g_name = g.name
+
         return g_name
 
     def process_check_in(self):
-        """
-        Transition: Reserved -> Checked In
-        Room: Available -> Occupied
-        Folio: Provisional -> Open
-        Action: CHARGE FIRST NIGHT IMMEDIATELY
-        """
+
         if self.status != "Reserved":
             frappe.throw(_("Only Reserved bookings can be Checked In."))
-        
+
         if getdate(self.arrival_date) > getdate(nowdate()):
             frappe.throw(_("Cannot Check-In before Arrival Date."))
 
-        # 1. Update Reservation
         self.db_set("status", "Checked In")
-        
-        # 2. Update Room Status
+
         frappe.db.set_value("Hotel Room", self.room, "status", "Occupied")
-        
-        # 3. Update Folio Status
+
         if self.folio:
             frappe.db.set_value("Guest Folio", self.folio, "status", "Open")
 
-            # 4. IMMEDIATE CHARGE
-            # Check if already charged to prevent double billing if Check-in happens twice or after audit
             if not already_charged_today(self.folio, nowdate()):
-                rate = get_rate(self.rate_plan, self.room_type, nowdate())
+                rate = get_rate(
+                    self.rate_plan,
+                    self.room_type,
+                    nowdate(),
+                )
+
                 if rate > 0:
-                    # post_room_charge will check self.is_company_guest/is_group_guest to determine billing
                     post_room_charge(self, rate, nowdate())
-                    frappe.msgprint(_("Check-in successful. Room charged {0} for today.").format(rate))
+
+                    frappe.msgprint(
+                        _("Check-in successful. Room charged {0}.").format(rate)
+                    )
 
         return "Checked In"
 
     def process_check_out(self):
-        """
-        Transition: Checked In -> Checked Out
-        Room: Occupied -> Dirty
-        Folio: Validate Balance -> Closed -> SUBMITTED (Immutable)
-        Reservation: SUBMITTED (Immutable)
-        """
+
         if self.status != "Checked In":
             frappe.throw(_("Guest is not currently Checked In."))
 
         if getdate(self.departure_date) != getdate(nowdate()):
-            frappe.throw(_("Cannot Check Out. Departure date ({0}) must be today ({1}).").format(self.departure_date, nowdate()))
+            frappe.throw(
+                _("Departure date must be today.")
+            )
 
-        # Requirement: "When a reservation is part of a group booking, that reservation cannot be checked out until the master folio is cleared."
+        # GROUP CHECK
         if self.is_group_guest and self.group_booking:
-            master_folio = frappe.db.get_value("Hotel Group Booking", self.group_booking, "master_folio")
-            if master_folio:
-                # Sync balance to get latest totals
-                master_folio_doc = frappe.get_doc("Guest Folio", master_folio)
-                from hospitality_core.hospitality_core.api.folio import sync_folio_balance
-                sync_folio_balance(master_folio_doc)
-                
-                # Re-fetch balance
-                master_balance = frappe.db.get_value("Guest Folio", master_folio, "outstanding_balance")
-                if master_balance > 0.01:
-                    frappe.throw(_("Cannot Check Out. The Group Master Folio ({0}) has an outstanding balance of {1}. All group charges must be settled first.").format(master_folio, master_balance))
+            master_folio = frappe.db.get_value(
+                "Hotel Group Booking",
+                self.group_booking,
+                "master_folio",
+            )
 
-        # 1. Handle Folio
+            if master_folio:
+                from hospitality_core.hospitality_core.api.folio import (
+                    sync_folio_balance,
+                )
+
+                master_doc = frappe.get_doc("Guest Folio", master_folio)
+                sync_folio_balance(master_doc)
+
+                balance = frappe.db.get_value(
+                    "Guest Folio",
+                    master_folio,
+                    "outstanding_balance",
+                )
+
+                if balance > 0.01:
+                    frappe.throw(
+                        _("Group Master Folio has outstanding balance: {0}").format(
+                            balance
+                        )
+                    )
+
+        # HANDLE FOLIO
         if self.folio:
             folio_doc = frappe.get_doc("Guest Folio", self.folio)
-            
-            # --- START: AUTOMATIC TRANSFER TO CITY LEDGER ---
+
+            # COMPANY TRANSFER
             if self.company:
-                # Calculate total amount tagged as 'Bill To Company' on this folio
-                company_liability = frappe.db.sql("""
-                    SELECT SUM(amount) FROM `tabFolio Transaction`
-                    WHERE parent = %s 
-                    AND bill_to = 'Company' 
-                    AND is_void = 0
-                """, (self.folio,), as_dict=False)[0][0] or 0.0
+                company_liability = frappe.db.sql(
+                    """
+                    SELECT SUM(amount)
+                    FROM `tabFolio Transaction`
+                    WHERE parent=%s
+                    AND bill_to='Company'
+                    AND is_void=0
+                """,
+                    (self.folio,),
+                )[0][0] or 0
 
                 if company_liability > 0:
-                    # Check if we already posted a transfer to avoid double credit if button clicked twice
+
                     transfer_item = "TRANSFER"
+
                     if not frappe.db.exists("Item", transfer_item):
                         item = frappe.new_doc("Item")
                         item.item_code = transfer_item
@@ -168,163 +195,12 @@ class HotelReservation(Document):
                         item.item_group = "Services"
                         item.is_stock_item = 0
                         item.insert(ignore_permissions=True)
-                    
-                    transfer_exists = frappe.db.exists("Folio Transaction", {
-                        "parent": self.folio,
-                        "item": transfer_item,
-                        "posting_date": nowdate(),
-                        "amount": -1 * flt(company_liability)
-                    })
 
-                    if not transfer_exists:
-                        # Create the Credit Transaction on Guest Folio
-                        # This zeros out the Company portion on the Guest's view
-                        frappe.get_doc({
+                    frappe.get_doc(
+                        {
                             "doctype": "Folio Transaction",
                             "parent": self.folio,
                             "parenttype": "Guest Folio",
                             "parentfield": "transactions",
                             "posting_date": nowdate(),
-                            "item": transfer_item,
-                            "description": f"Transfer to Master Folio (City Ledger) - {self.company}",
-                            "qty": 1,
-                            "amount": -1 * flt(company_liability), # Credit
-                            "bill_to": "Company",
-                            "is_void": 0
-                        }).insert(ignore_permissions=True)
-                        
-                        frappe.msgprint(_("Transferred {0} to City Ledger.").format(company_liability))
-            # --- END: AUTOMATIC TRANSFER ---
-
-            # --- START: AUTOMATIC TRANSFER TO GROUP MASTER ---
-            if self.is_group_guest and self.group_booking:
-                # 1. Get Group Master Folio ID
-                group_master_folio = frappe.db.get_value("Hotel Group Booking", self.group_booking, "master_folio")
-                
-                if group_master_folio:
-                    # 2. Calculate total liability on Guest Folio (excluding existing transfers)
-                    # We assume ALL charges go to Group Master if 'Is Group Guest' is checked.
-                    # Or we should calculate balance? Let's take the Outstanding Balance.
-                    
-                    # Re-sync balance first
-                    from hospitality_core.hospitality_core.api.folio import sync_folio_balance
-                    sync_folio_balance(folio_doc)
-                    current_balance = frappe.db.get_value("Guest Folio", self.folio, "outstanding_balance")
-                    
-                    if current_balance > 0:
-                        transfer_item = "TRANSFER-GROUP"
-                        if not frappe.db.exists("Item", transfer_item):
-                            item = frappe.new_doc("Item")
-                            item.item_code = transfer_item
-                            item.item_name = "Transfer to Group Master"
-                            item.item_group = "Services"
-                            item.is_stock_item = 0
-                            item.insert(ignore_permissions=True)
-                            
-                        # 3. Credit Guest Folio
-                        frappe.get_doc({
-                            "doctype": "Folio Transaction",
-                            "parent": self.folio,
-                            "parenttype": "Guest Folio",
-                            "parentfield": "transactions",
-                            "posting_date": nowdate(),
-                            "item": transfer_item,
-                            "description": f"Transfer to Group Master - {self.group_booking}",
-                            "qty": 1,
-                            "amount": -1 * flt(current_balance), # Credit
-                            "bill_to": "Group",
-                            "is_void": 0
-                        }).insert(ignore_permissions=True)
-                        
-                        # 4. Debit Group Master Folio
-                        frappe.get_doc({
-                            "doctype": "Folio Transaction",
-                            "parent": group_master_folio,
-                            "parenttype": "Guest Folio",
-                            "parentfield": "transactions",
-                            "posting_date": nowdate(),
-                            "item": transfer_item,
-                            "description": f"Charge from Room {self.room} ({self.guest})",
-                            "qty": 1,
-                            "amount": flt(current_balance), # Debit
-                            "is_void": 0
-                        }).insert(ignore_permissions=True)
-                        
-                        frappe.msgprint(_("Transferred {0} to Group Master Folio.").format(current_balance))
-            # --- END: AUTOMATIC TRANSFER TO GROUP MASTER ---
-            
-            # Recalculate balance to be safe
-            from hospitality_core.hospitality_core.api.folio import sync_folio_balance
-            sync_folio_balance(folio_doc)
-            
-            # Re-fetch values
-            balance = frappe.db.get_value("Guest Folio", self.folio, "outstanding_balance")
-            
-            # Requirement: "folio once opened cannot be closed until all payments are made... enforced... for private guests"
-            # Updated Requirement: Company Guests can check out with balance.
-            
-            if not self.is_company_guest:
-                if balance > 0.01:
-                    frappe.throw(_("Cannot Check Out. Outstanding balance of {0} remains on Folio {1}. Please settle payment.").format(balance, self.folio))
-            else:
-                if balance > 0.01:
-                    frappe.msgprint(_("Company Guest Checkout: Outstanding balance of {0}. Liability remains on Company Master Folio.").format(balance))
-            
-            # Close Folio
-			folio_doc.reload()  # VERY IMPORTANT
-            folio_doc.status = "Closed"
-            folio_doc.close_date = nowdate()
-            
-            # Requirement: "folio ... should be submitted and immutable"
-            # Updated: Document is no longer submittable.
-            folio_doc.save()
-            
-            # Record guest balance if there's a credit balance
-            # (after_save hook handles this, but we call it explicitly to ensure it runs)
-            from hospitality_core.hospitality_core.api.folio import record_guest_balance
-            record_guest_balance(folio_doc)
-
-        # 2. Update Reservation
-        self.db_set("status", "Checked Out")
-        
-        # 3. Update Room Status to Dirty
-        frappe.db.set_value("Hotel Room", self.room, "status", "Dirty")
-
-        # 4. Doctype is no longer submittable, just save changes.
-        self.save()
-
-        return "Checked Out"
-    
-    def process_cancel(self):
-        """
-        Transition: Reserved -> Cancelled
-        """
-        if self.status != "Reserved":
-            frappe.throw(_("Only Reserved bookings can be Cancelled."))
-        
-        self.db_set("status", "Cancelled")
-        
-        # If there's a folio, cancel it as well if it's not already closed
-        if self.folio:
-            folio_status = frappe.db.get_value("Guest Folio", self.folio, "status")
-            if folio_status not in ["Closed", "Cancelled"]:
-                frappe.db.set_value("Guest Folio", self.folio, "status", "Cancelled")
-                frappe.msgprint(_("Linked Guest Folio {0} has been cancelled.").format(self.folio))
-        
-        return "Cancelled"
-
-# Whitelisted methods for client-side buttons
-@frappe.whitelist()
-def check_in_guest(name):
-    doc = frappe.get_doc("Hotel Reservation", name)
-    return doc.process_check_in()
-
-@frappe.whitelist()
-def check_out_guest(name):
-    doc = frappe.get_doc("Hotel Reservation", name)
-    return doc.process_check_out()
-
-@frappe.whitelist()
-def cancel_reservation(name):
-    doc = frappe.get_doc("Hotel Reservation", name)
-    return doc.process_cancel()
+                            "item": transfer_ite_
