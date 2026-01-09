@@ -2,6 +2,7 @@ import frappe
 from frappe import _
 from frappe.utils import getdate, date_diff, nowdate
 
+@frappe.whitelist(allow_guest=True)
 def check_availability(room, arrival_date, departure_date, ignore_reservation=None):
     """
     Checks if a room is available for the given date range.

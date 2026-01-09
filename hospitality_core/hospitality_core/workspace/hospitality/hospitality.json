@@ -1,14 +1,15 @@
 {
  "charts": [],
- "content": "[{\"id\":\"KetbGV2NUv\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Front Desk Operations</span>\",\"col\":12}},{\"id\":\"AFikpVG8G_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Front Desk Console\",\"col\":4}},{\"id\":\"LmjeZv2AcL\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Tape Chart\",\"col\":4}},{\"id\":\"is7sVl6bVG\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Availability Query\",\"col\":4}},{\"id\":\"KRRJXdLa5m\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Guest 360 View\",\"col\":4}},{\"id\":\"Vqn38JTnz-\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Maintenance Requests\",\"col\":4}},{\"id\":\"41rbMghVLH\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Housekeeping Board\",\"col\":4}},{\"id\":\"qypRwgKZsT\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Management &amp; Inventory</span>\",\"col\":12}},{\"id\":\"3fpFN3V6Ax\",\"type\":\"card\",\"data\":{\"card_name\":\"Operations\",\"col\":4}},{\"id\":\"QcU-MEY5VS\",\"type\":\"card\",\"data\":{\"card_name\":\"Inventory & Rates\",\"col\":4}},{\"id\":\"n54kJReGGr\",\"type\":\"card\",\"data\":{\"card_name\":\"Accounting & Billing\",\"col\":4}},{\"id\":\"DiTXVcW0Fx\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Operational Reports</span>\",\"col\":12}},{\"id\":\"QQwoEW_WYs\",\"type\":\"card\",\"data\":{\"card_name\":\"Operational Reports\",\"col\":4}},{\"id\":\"ye4-MwIyfp\",\"type\":\"card\",\"data\":{\"card_name\":\"Maintenance & Logs\",\"col\":4}},{\"id\":\"vHLVgSFGJ7\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Financial Reports &amp; Analytics</span>\",\"col\":12}},{\"id\":\"eiDfp-ImIL\",\"type\":\"card\",\"data\":{\"card_name\":\"Financial Reports\",\"col\":4}},{\"id\":\"1XswkkRf_g\",\"type\":\"card\",\"data\":{\"card_name\":\"Analytics\",\"col\":4}}]",
+ "content": "[{\"id\":\"KetbGV2NUv\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Front Desk Operations</span>\",\"col\":12}},{\"id\":\"AFikpVG8G_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Front Desk Console\",\"col\":4}},{\"id\":\"LmjeZv2AcL\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Tape Chart\",\"col\":4}},{\"id\":\"is7sVl6bVG\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Availability Query\",\"col\":4}},{\"id\":\"KRRJXdLa5m\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Guest 360 View\",\"col\":4}},{\"id\":\"Vqn38JTnz-\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Maintenance Requests\",\"col\":4}},{\"id\":\"41rbMghVLH\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Housekeeping Board\",\"col\":4}},{\"id\":\"qypRwgKZsT\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Management &amp; Inventory</span>\",\"col\":12}},{\"id\":\"3fpFN3V6Ax\",\"type\":\"card\",\"data\":{\"card_name\":\"Operations\",\"col\":4}},{\"id\":\"QcU-MEY5VS\",\"type\":\"card\",\"data\":{\"card_name\":\"Inventory & Rates\",\"col\":4}},{\"id\":\"n54kJReGGr\",\"type\":\"card\",\"data\":{\"card_name\":\"Accounting & Billing\",\"col\":4}},{\"id\":\"DiTXVcW0Fx\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Reports and Analytics</span>\",\"col\":12}},{\"id\":\"QQwoEW_WYs\",\"type\":\"card\",\"data\":{\"card_name\":\"Operational Reports\",\"col\":6}},{\"id\":\"eiDfp-ImIL\",\"type\":\"card\",\"data\":{\"card_name\":\"Financial Reports\",\"col\":6}}]",
  "creation": "2025-01-28 13:00:00",
  "custom_blocks": [],
  "docstatus": 0,
  "doctype": "Workspace",
  "for_user": "",
  "hide_custom": 0,
- "icon": "hotel",
+ "icon": "table",
  "idx": 0,
+ "indicator_color": "",
  "is_hidden": 0,
  "label": "Hospitality",
  "links": [
@@ -199,7 +200,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Operational Reports",
-   "link_count": 4,
+   "link_count": 6,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -248,12 +249,13 @@
   },
   {
    "hidden": 0,
-   "is_query_report": 0,
-   "label": "Analytics",
-   "link_count": 1,
-   "link_type": "DocType",
+   "is_query_report": 1,
+   "label": "Maintenance Log",
+   "link_count": 0,
+   "link_to": "Maintenance Log Report",
+   "link_type": "Report",
    "onboard": 0,
-   "type": "Card Break"
+   "type": "Link"
   },
   {
    "hidden": 0,
@@ -264,33 +266,15 @@
    "link_type": "Report",
    "onboard": 0,
    "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Maintenance & Logs",
-   "link_count": 1,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Maintenance Log Report",
-   "link_count": 0,
-   "link_to": "Maintenance Log Report",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
   }
  ],
- "modified": "2025-12-20 05:21:14.969018",
- "modified_by": "braimahgifted@gmail.com",
+ "modified": "2026-01-08 13:50:16.437531",
+ "modified_by": "Administrator",
  "module": "Hospitality Core",
  "name": "Hospitality",
  "number_cards": [],
  "owner": "Administrator",
+ "parent_page": "",
  "public": 1,
  "quick_lists": [],
  "roles": [
