@@ -51,7 +51,14 @@ class GuestFolio(Document):
         if self.status == "Closed":
             from hospitality_core.hospitality_core.api.folio import record_guest_balance
             record_guest_balance(self)
+	
+	def on_cancel(self):
+	    # Reverse balances or transactions here
+	    pass
 
     def on_trash(self):
-        if self.transactions:
-            frappe.throw(_("Cannot delete a Folio that has transactions. Cancel it instead."))
+	    if not frappe.has_permission("Guest Folio", "delete"):
+	        frappe.throw(_("You do not have permission to delete this Folio."))
+	
+	    if self.transactions and not frappe.session.user == "Administrator":
+	        frappe.throw(_("Only Administrator can delete Folios with transactions."))
